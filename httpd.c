@@ -75,8 +75,8 @@ void accept_request(void *arg)
     }
     j=i;
     method[i] = '\0';
-
-    if (strcasecmp(method, "GET") && strcasecmp(method, "POST"))
+    
+    if (strcasecmp(method, "GET") && strcasecmp(method, "POST")) /*该方法未实现*/
     {
         unimplemented(client);
         return;
@@ -86,9 +86,9 @@ void accept_request(void *arg)
         cgi = 1;
 
     i = 0;
-    while (ISspace(buf[j]) && (j < numchars))
+    while (ISspace(buf[j]) && (j < numchars))/*跳过空格字符*/
         j++;
-    while (!ISspace(buf[j]) && (i < sizeof(url) - 1) && (j < numchars))
+    while (!ISspace(buf[j]) && (i < sizeof(url) - 1) && (j < numchars))/*解析URL*/
     {
         url[i] = buf[j];
         i++; j++;
@@ -100,7 +100,7 @@ void accept_request(void *arg)
         query_string = url;
         while ((*query_string != '?') && (*query_string != '\0'))
             query_string++;
-        if (*query_string == '?')
+        if (*query_string == '?')/*忽略query参数，？替换为\0*/
         {
             cgi = 1;
             *query_string = '\0';
@@ -109,23 +109,23 @@ void accept_request(void *arg)
     }
 
     sprintf(path, "htdocs%s", url);
-    if (path[strlen(path) - 1] == '/')
+    if (path[strlen(path) - 1] == '/')/*url不完整返回index页面*/
         strcat(path, "index.html");
-    if (stat(path, &st) == -1) {
+    if (stat(path, &st) == -1) {/*获取文件信息失败*/
         while ((numchars > 0) && strcmp("\n", buf))  /* read & discard headers */
             numchars = get_line(client, buf, sizeof(buf));
         not_found(client);
     }
     else
     {
-        if ((st.st_mode & S_IFMT) == S_IFDIR)
+        if ((st.st_mode & S_IFMT) == S_IFDIR)/*请求路径为文件夹时返回index页面*/
             strcat(path, "/index.html");
         if ((st.st_mode & S_IXUSR) ||
                 (st.st_mode & S_IXGRP) ||
-                (st.st_mode & S_IXOTH)    )
+                (st.st_mode & S_IXOTH)    )/*检查用户具有可执行权限*/
             cgi = 1;
         if (!cgi)
-            serve_file(client, path);
+            serve_file(client, path);/*发送请求的文件*/
         else
             execute_cgi(client, path, method, query_string);
     }
@@ -243,7 +243,7 @@ void execute_cgi(int client, const char *path,
     {
     }
 
-
+    /*创建管道，用于进程间通信[0]读，[1]写*/
     if (pipe(cgi_output) < 0) {
         cannot_execute(client);
         return;
@@ -252,7 +252,7 @@ void execute_cgi(int client, const char *path,
         cannot_execute(client);
         return;
     }
-
+    /*创建子进程，子进程返回0，父进程返回子进程的pid*/
     if ( (pid = fork()) < 0 ) {
         cannot_execute(client);
         return;
@@ -325,6 +325,7 @@ int get_line(int sock, char *buf, int size)
         {
             if (c == '\r')
             {
+                /*查看下一欲读取的字符，但不从缓冲区取走，兼容仅使用‘\r‘未使用’\r\n'换行的情形*/
                 n = recv(sock, &c, 1, MSG_PEEK);
                 /* DEBUG printf("%02X\n", c); */
                 if ((n > 0) && (c == '\n'))
